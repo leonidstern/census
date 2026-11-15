@@ -13,16 +13,16 @@ Use it to catch visual regressions in a PR, to check a page against your design 
 
 ## Benchmarks
 
-Opus 5.5 read the output with no tools. The test was a production React app with 8 planted visual regressions, checked per page before and after, with 3 runs per arm. Capture is per page, with main's capture cached. Percentages compare with screenshots. Playwright MCP's snapshot is the page text most browser agents read today: it has roles and words, but no styles.
+Opus 5.5 read the output with no tools. The test was a production React app with 8 planted visual regressions, checked per page before and after, with 3 runs per arm. Capture is per page, with main's capture cached. Percentages compare with screenshots.
 
-| | Census diff | Screenshots + pixel diff | Playwright MCP snapshot |
-|---|---|---|---|
-| Found | **100%** | 63% | 25% |
-| False claims per read | 0 | 1 | 0 |
-| AI read time | **16 s** (54% less) | 35 s | 18 s |
-| AI cost per read | **~$0.03** (57% less) | ~$0.07 | ~$0.06 |
-| Capture time per PR | **11 s** (31% less) | 16 s | 13 s |
-| Capture CPU per PR | 13 s (8% more) | 12 s | 12 s |
+| | Census diff | Screenshots + pixel diff |
+|---|---|---|
+| Found | **100%** | 63% |
+| False claims per read | 0 | 1 |
+| AI read time | **16 s** (54% less) | 35 s |
+| AI cost per read | **~$0.03** (57% less) | ~$0.07 |
+| Capture time per PR | **11 s** (31% less) | 16 s |
+| Capture CPU per PR | 13 s (8% more) | 12 s |
 
 On a design-system check of three pages, Opus was asked to find the known problems:
 
@@ -92,7 +92,7 @@ save("out", { home });
 - `set where used`: a page changed a part's look with its own class.
 - `IN 2 LOOKS`: one part and variant drawn two ways.
 - `no DS part`: a control none of your parts drew.
-- `rules broken`: a rule of your rules file broken on screen (roles, text, states, pairs, legacy below).
+- `rules broken`: a rule of your rules file broken on screen (text, states, pairs, legacy below).
 - `layout problems`: cut text, overlaps, faint words, covered controls.
 - `layout`: each row, column, grid and filled box: the gaps between its children as drawn (`gaps 32 16` when they differ, in order; `(margins)`, `(free space)` when not `gap` makes them), its `pad`ding (top right bottom left, or shortened), and how its children sit (`justify between`, `items center`), with the children it holds. Diff says a change in any of them.
 - `align`: words set other than to the start of their box (`text end`, `text center`). A control's centred label isn't said.
@@ -126,7 +126,6 @@ To judge: a different part, variant, size or state (selected, disabled, open) is
   "parts": ["Button", "Tabs", "Select"],
   "ignore": "#intercom-frame",
 
-  "roles": { "dialog": { "fill": "surface-2", "shadow": "popover", "radius": 12 }, "Tooltip": { "fill": "surface-3" } },
   "text": ["white-100", "white-70", "white-50", "red-300"],
   "states": { "hover": "wash white-5", "pressed": "wash white-10" },
   "pairs": { "red-700": ["red-300"] },
@@ -137,7 +136,6 @@ To judge: a different part, variant, size or state (selected, disabled, open) is
 
 Every field is optional. `type` is size/weight/line-height in px. The second half says what the screen must look like, and each break is a line in `rules broken`:
 
-- `roles`: the fill, shadow and corner a box takes, by ARIA role (`dialog`, `menu`, `listbox`, `tooltip`) or by part name.
 - `text`: the colors text may use. Icons aside.
 - `states`: what hover, pressed or focus does to a control's fill. `wash white-5` lays that color over the resting fill, on neutral fills only (a colored fill keeps its own states); a plain color name means that color.
 - `pairs`: the text colors each fill takes.

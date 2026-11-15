@@ -360,8 +360,6 @@ function cross(a: DOMRect, b: DOMRect): DOMRect | null {
 export type StyleRules = {
   colors?: Record<string, string>; type?: string[]; radii?: number[]; parts?: string[]; shadows?: Record<string, string>; ignore?: string; foreign?: boolean; closed?: boolean; sources?: boolean; items?: boolean;
   extends?: string | string[]; checks?: Record<string, CheckSetting>; max?: Record<string, number | "off">;
-  /** what a box of a role must look like, by ARIA role (dialog, menu, listbox, tooltip) or part name: a color name, a shadow name, a corner in px */
-  roles?: Record<string, { fill?: string; shadow?: string; radius?: number }>;
   /** the color names text may use (icons aside) */
   text?: string[];
   /** what a state does to a control's fill: "wash white-5" (that color laid over the resting fill) or a color name */
@@ -1067,13 +1065,6 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
   const nameOf$ = (h: string | null) => (h ? tokenOf(h).name ?? null : null);
   const base$ = (n: string) => n.replace(/\/\d+$/, "");
   const legacyRe = rules.legacy?.length ? new RegExp(`(?:^|[ <])(${rules.legacy.map((x) => x.replace(/[^\w-]/g, "")).join("|")})(?= |$)`) : null;
-  const roleCheck = (who: string, fill: string | null, shadow: string, corner: string, el: Element, r: DOMRect) => {
-    const want = rules.roles?.[who];
-    if (!want) return;
-    if (want.fill && base$(nameOf$(fill) ?? "none") !== want.fill) add(groups.rules, `${who} fill ${fill ?? "none"}: its role takes ${want.fill}`, el, r);
-    if (want.shadow && shadow !== want.shadow) add(groups.rules, `${who} shadow ${shadow}: its role takes ${want.shadow}`, el, r);
-    if (want.radius !== undefined && corner !== String(want.radius)) add(groups.rules, `${who} corner ${sayCorner(corner)}: its role takes ${want.radius}px`, el, r);
-  };
   let skipped: string[] = [];
   try { if (rules.ignore) skipped = [rules.ignore]; root.querySelector(rules.ignore || "*"); } catch { skipped = []; }
   const out = new Set<Element>(root.querySelectorAll(["[data-census-private]", ...skipped].join(",")));
@@ -1282,15 +1273,12 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
       }
       if (!inner) {
         add(groups.layer, `${role ?? "layer"} corner ${sayCorner(lc)} fill ${lb ?? "none"}${ll ? ` line ${ll}` : ""} shadow ${ls?.rest.length ? ls.rest.join(", ") : "none"}`, el, r);
-        if (role) roleCheck(role, lb, ls?.rest.length ? sayShadow(ls.rest.join(", ")) : "none", lc, el, r);
       }
     }
     const p = part(el);
     if (p && big) {
       const old = legacyRe?.exec(p.say)?.[1];
       if (old) add(groups.rules, `legacy part ${old} on screen`, el, r);
-      const pn = p.key.split(" ")[0];
-      if (rules.roles?.[pn] && !live && still && !stateOf(el)) roleCheck(pn, bg, sh?.rest.length ? sayShadow(sh.rest.join(", ")) : "none", corner, el, r);
     }
     let boxR = r, hug = false;
     if (ctl) {
@@ -1698,7 +1686,7 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
         if (odd) rows.push({ key: `tracking at ${size}px: ${signs.map(([ls, s]) => `${ls > 0 ? "+" : ""}${ls} ×${s.n}`).join(", ")}`, n: 0, note: whence(odd[1].el, "letter-spacing", true) || undefined, at: odd[1].at });
       }
     }
-    const WHAT: Record<string, string> = { used: "what a part's use site changed about its look with a class or style of its own", layer: "pop-ups and their boxes", layout: "rows, columns, grids and filled boxes: the gaps between their children as drawn, their padding, how the children sit", align: "words set other than to the start of their box", rules: "the rules file's roles, text, states, pairs and legacy, each line one rule broken" };
+    const WHAT: Record<string, string> = { used: "what a part's use site changed about its look with a class or style of its own", layer: "pop-ups and their boxes", layout: "rows, columns, grids and filled boxes: the gaps between their children as drawn, their padding, how the children sit", align: "words set other than to the start of their box", rules: "the rules file's text, states, pairs and legacy, each line one rule broken" };
     made.push({ name: g === "used" ? "set where used" : g === "rules" ? "rules broken" : g, what: WHAT[g], rows });
   }
   // parts: the same part and variant in more than one look first (changed where it's used)
