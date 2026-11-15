@@ -6,6 +6,8 @@ Covered by that promise: the census and diff text, rules.json, the CLI's flags a
 
 ## Unreleased
 
+- **Breaking: `roles` is gone from rules.json.** It set the fill, shadow and corner a box of each ARIA role or part had to have. A rules.json that still sets it is read as before, minus that field: nothing is checked against it and nothing says so.
+
 ## 0.4.0 — 2026-11-14
 
 Neither 0.2.1 nor 0.3.0 reached npm: 0.2.1's release run failed at the publish step, and 0.3.0 only ever existed in one commit. So this is the upgrade from 0.2.0, and it carries 0.2.1's fix as well.
