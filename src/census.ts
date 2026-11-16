@@ -1556,7 +1556,7 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
       const items: string[] = [];
       for (const k of LOOK) {
         if (!set.has(k)) continue;
-        const v = cs.getPropertyValue(k), c = /color$/.test(k) ? colorOf(v) : null;
+        const v = cs.getPropertyValue(k), c = k.endsWith("color") ? colorOf(v) : null;
         // a height is a look only on a control: a box takes whatever size its place gives it
         if (k === "height" || k === "min-height") { if (u.ctl) items.push(`${k === "height" ? "height" : "min height"} ${num(parseFloat(v))}px`); }
         else if (k === "border-top-left-radius") items.push(`corner ${sayCorner(cornerOf(cs))}`);
@@ -1671,7 +1671,7 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
       note += nearOf(g, k, list);
       // where a value off the system or next to another comes from
       if (note && WHENCE[g] && !/\(icon\)/.test(k)) note += whence(s.el, ...WHENCE[g]);
-      else if (g === "type" && / \(line height\)$/.test(note)) note += whence(s.el, "line-height", true);
+      else if (g === "type" && note.endsWith(" (line height)")) note += whence(s.el, "line-height", true);
       // where the part of a place off the system, or set where used, was used in the code
       const at = rules.sources && (g === "used" || g === "rules" || / OFF| near /.test(`${key}${note}`)) ? s.at.map((a, i) => { const e = s.els?.[i]; return e ? `${a}${srcOf(part(e) ?? ownerOf(e)) || hostSrc(e)}` : a; }) : s.at;
       return { key, n: s.n, note: note || undefined, at };

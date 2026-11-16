@@ -40,13 +40,16 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "esbuild src/browser.ts --bundle --format=iife --outfile=dist/census.js --log-level=warning && esbuild src/index.ts --bundle --format=esm --outfile=dist/census.mjs --log-level=warning && tsc -p .",
-    "check": "tsc -p . --noEmit",
+    "build": "esbuild src/browser.ts --bundle --format=iife --outfile=dist/census.js --log-level=warning && esbuild src/index.ts --bundle --format=esm --outfile=dist/census.mjs --log-level=warning && tsc -p . && node -e \"require('node:fs').writeFileSync('dist/census.d.mts', 'export * from \\x22./index\\x22;\\n')\"",
+    "check": "tsc -p . --noEmit && tsc -p tsconfig.cli.json",
+    "lint": "oxlint src cli --deny-warnings",
     "test": "npm run build && node test/census-test.mjs",
     "prepare": "npm run build"
   },
   "devDependencies": {
+    "@types/node": "22.20.5",
     "esbuild": "0.25.12",
+    "oxlint": "1.93.0",
     "svelte": "^5.57.3",
     "typescript": "5.6.3",
     "vue": "3.5"

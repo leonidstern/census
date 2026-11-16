@@ -72,7 +72,10 @@ async function connectWs(url) {
   const wait = new Map(), on = new Set();
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
-    if (m.id && wait.has(m.id)) { const w = wait.get(m.id); wait.delete(m.id); m.error ? w.no(new Error(`${w.method}: ${m.error.message}`)) : w.ok(m.result); }
+    if (m.id && wait.has(m.id)) {
+      const w = wait.get(m.id); wait.delete(m.id);
+      if (m.error) w.no(new Error(`${w.method}: ${m.error.message}`)); else w.ok(m.result);
+    }
     else if (m.method) for (const f of on) f(m);
   };
   return {
@@ -87,8 +90,14 @@ async function connectWs(url) {
 }
 
 class Page {
+  /**
+   * @param {{ send: (method: string, params?: object, session?: string) => Promise<any>, on: (f: (m: any) => unknown) => () => void }} conn
+   * @param {string} session @param {string} target @param {number} width @param {number} height
+   */
   constructor(conn, session, target, width, height) {
-    Object.assign(this, { conn, session, target, width, height });
+    this.conn = conn; this.session = session; this.target = target; this.width = width; this.height = height;
+    /** @type {number | null} the document's node id, for querySelectorAll; one per page load */
+    this.root = null;
     // requests in flight, to know when the page has its data
     this.open = new Map();
     conn.on((m) => {
@@ -146,7 +155,7 @@ class Page {
     // a request the last page left open can't be loading anything for this one (a report or a beacon it fired on the
     // way out never says it finished), so it mustn't hold this page's settle
     this.open.clear();
-    let off;
+    let off = () => {};
     const loaded = new Promise((ok) => { off = this.conn.on((m) => m.sessionId === this.session && m.method === "Page.loadEventFired" && ok()); });
     const r = await this.send("Page.navigate", { url });
     if (r.errorText) { off(); throw new Error(`${url}: ${r.errorText}`); }
