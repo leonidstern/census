@@ -142,7 +142,8 @@ async function tour(page, rules, data, width, height, url) {
   const marks = await page.evaluate(() => {
     const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 3 && r.height > 3 && r.top >= 0 && r.bottom <= innerHeight && e.checkVisibility(); };
     const out = []; let i = 0, j = 0;
-    for (const e of document.querySelectorAll("[aria-haspopup],[aria-expanded=false]")) {
+    // a control that opens something; .disabled and .type are read as a button's (undefined, so false, on anything else)
+    for (const e of /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll("[aria-haspopup],[aria-expanded=false]"))) {
       if (!vis(e) || e.disabled || e.getAttribute("aria-disabled") === "true" || e.type === "submit") continue;
       e.setAttribute("data-census-open", String(i)); out.push({ i, how: "click", name: (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 30) });
       if (++i >= 40) break;
@@ -189,7 +190,7 @@ async function tour(page, rules, data, width, height, url) {
       }
     } catch (e) { console.log("skipped", m.name, String(e).slice(0, 80)); }
   }
-  for (const { g, row } of [...rows.values()].sort((a, b) => (b.g === "layers opened") - (a.g === "layers opened"))) {
+  for (const { g, row } of [...rows.values()].sort((a, b) => Number(b.g === "layers opened") - Number(a.g === "layers opened"))) {
     let to = data.groups.find((x) => x.name === g);
     if (!to) data.groups.push((to = { name: g, what: g === "layers opened" ? "by the capture, one at a time: a click on each control that opens something, a hover on a few labeled buttons" : "", rows: [] }));
     to.rows.push(row);

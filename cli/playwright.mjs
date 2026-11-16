@@ -24,6 +24,9 @@ let script;
  *   page's source maps; root: the project folder, to write the paths relative to it (default: the current one)
  * - hide: a selector of elements to hide first (a dev overlay, a cookie banner)
  * - selector: read only this element and what is inside it
+ *
+ * @param {any} page a Playwright Page (Playwright isn't a dependency, so its types aren't here)
+ * @param {{ rules?: import("../dist/census.mjs").StyleRules, states?: "force" | "rules", sources?: boolean, root?: string, hide?: string, selector?: string }} [options]
  */
 export async function census(page, { rules = {}, states = "force", sources = false, root, hide, selector } = {}) {
   script ??= readFileSync(join(here, "../dist/census.js"), "utf8");
