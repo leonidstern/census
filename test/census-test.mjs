@@ -120,6 +120,15 @@ check(Math.round(C.contrast(white, black)) === 21 && JSON.stringify(C.parseColor
   check(d.includes("  text #555555 OFF (nearest muted, 59 away) ×1: p 16,30 100x20"), "a diff's value line drops where it comes from, even a var() in it") || console.log(d);
 }
 
+{
+  // a layout problem that stays is not new and gone: its box and its numbers can change with it
+  const lp = (...keys) => ({ head, groups: [{ name: "layout problems", rows: keys.map((key) => ({ key, n: 0, at: [] })) }] });
+  const same = C.diffCensus(lp('cut-text button "Advanced order settings" in aside 1080,278 110x32 needs 190x32'), lp('cut-text button "Advanced order settings" in aside 1080,282 110x36 needs 190x36')).join("\n");
+  const real = C.diffCensus(lp('cut-text button "Advanced order settings" in aside 1080,278 110x32 needs 190x32'), lp('cut-text button "Advanced order settings" in aside 1080,282 110x36 needs 190x36', 'cut-text button "Export CSV" 162,114 96x30 needs 103x30')).join("\n");
+  check(!/layout problems/.test(same) && /layout problems new \(1\)\n {2}cut-text button "Export CSV"/.test(real) && !/layout problems gone/.test(real),
+    "diff: a cut label whose button grew is the same problem, a newly cut one is new") || console.log(same, "\n---\n", real);
+}
+
 // ---------- Source maps ----------
 {
   const { transform } = await import("esbuild"), { sourceMapper, mapSources } = await import("../cli/sourcemap.mjs");

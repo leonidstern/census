@@ -6,6 +6,7 @@ Covered by that promise: the census and diff text, rules.json, the CLI's flags a
 
 ## Unreleased
 
+- **A layout problem that stays is no longer "new" and "gone" in a diff.** Problems were matched with their measurements, so a label already cut off showed up as both when its button only grew taller (`needs 190x32` → `needs 190x36`). They now match on kind and element; a box or number that changes alongside doesn't make it a new problem. Found in a PR-review benchmark.
 - **Breaking: `roles` is gone from rules.json.** It set the fill, shadow and corner a box of each ARIA role or part had to have. A rules.json that still sets it is read as before, minus that field: nothing is checked against it and nothing says so.
 
 ## 0.4.0 — 2026-11-14

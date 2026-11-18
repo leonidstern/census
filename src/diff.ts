@@ -157,8 +157,10 @@ export function diffCensus(before: Census, after: Census, max = 40, live?: Censu
   for (const [k, s] of la) { const now = lb.get(k); for (const l of s) if (now && !now.has(l)) pl.push(`  ${k}: lost look ${l}`); }
   if (pl.length) out.push(`parts (${pl.length})`, ...cap(pl, max));
 
-  // layout problems, compared without their boxes
-  const probs = (c: Census) => new Map((c.groups.find((g) => g.name === "layout problems")?.rows ?? []).map((r) => [r.key.replace(BOX, "#"), r.key]));
+  // layout problems, matched by kind and element: the box and the numbers after it (what the text needs, a contrast,
+  // what covers it) can change while the problem stays, as a cut label does when its button grows taller
+  const probKey = (k: string) => { const s = k.replace(BOX, "#"); return s.slice(0, s.lastIndexOf("#") + 1) || s; };
+  const probs = (c: Census) => new Map((c.groups.find((g) => g.name === "layout problems")?.rows ?? []).map((r) => [probKey(r.key), r.key]));
   const pa = probs(before), pb = probs(after);
   const np = [...pb].filter(([k]) => !pa.has(k)).map(([, v]) => `  ${v}`), fp = [...pa].filter(([k]) => !pb.has(k)).map(([, v]) => `  ${v}`);
   if (np.length) out.push(`layout problems new (${np.length})`, ...cap(np, max));
