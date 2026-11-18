@@ -198,7 +198,7 @@ async function tour(page, rules, data, width, height, url) {
 }
 
 async function diff() {
-  const { diffCensus, diffFindings } = await import(join(here, "../dist/census.mjs"));
+  const { diffCensus, diffFindings, renames } = await import(join(here, "../dist/census.mjs"));
   const levels = opt["fail-on"] ? failLevels(opt["fail-on"], ["new-rules", "new-accessibility", "max-worse"]) : new Set();
   let failing = 0;
   const [a, b] = rest.map((f) => JSON.parse(readFileSync(f, "utf8")));
@@ -208,7 +208,7 @@ async function diff() {
   for (const n of names) {
     if (!a[n] || !b[n]) { out.push(`${n}: only in the ${a[n] ? "before" : "after"} capture`, ""); continue; }
     out.push(`<${n}>`, ...diffCensus(a[n], b[n], 40, live?.[n]), `</${n}>`, "");
-    const d = diffFindings(a[n], b[n]);
+    const d = diffFindings(a[n], b[n], 40, renames(a[n], b[n]));
     if (levels.has("new-rules")) failing += d.newRules.length;
     if (levels.has("new-accessibility")) failing += d.newAccessibility.filter((f) => !f.unsure).length;
     if (levels.has("max-worse")) failing += d.maxWorse.length;

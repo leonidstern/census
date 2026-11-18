@@ -936,9 +936,14 @@ export function forceRead(i: number, read: string | null, next: string | null): 
   }
   if (next) set(next);
 }
-/** Takes the marks off. */
+/**
+ * Takes the marks off, and lays the page out while transitions are still off: Chrome applies the last un-forcing at the
+ * next style pass, and if that pass came after transitions are back, the last control forced would fade out of its
+ * focus ring while the census reads it at rest (a ring it doesn't wear, and a "mid-animation" count).
+ */
 export function forceDone(): void {
   for (const el of document.querySelectorAll("[data-census-f],[data-census-up]")) { el.removeAttribute("data-census-f"); el.removeAttribute("data-census-up"); }
+  document.documentElement.getBoundingClientRect();
 }
 const LAYER = /^(dialog|alertdialog|menu|listbox|tooltip)$/;
 // what a class or style given at a part's use site may change about its look (not where it sits: width, margin, flex)
