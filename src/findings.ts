@@ -190,8 +190,9 @@ export function mergeFindings(pages: Record<string, Census>): Finding[] | undefi
 /**
  * What changed in the findings between two captures. The lines say accessibility findings new and fixed (a value new
  * off the system is already said by diff's values); both levels' new findings are returned, for --fail-on.
+ * `renamed` (diff's renames: after name → before name) keeps a renamed control from reading as newly covered.
  */
-export function diffFindings(before: Census, after: Census, max = 40): { lines: string[]; newRules: Finding[]; newAccessibility: Finding[]; maxWorse: Finding[] } {
+export function diffFindings(before: Census, after: Census, max = 40, renamed: Map<string, string> = new Map()): { lines: string[]; newRules: Finding[]; newAccessibility: Finding[]; maxWorse: Finding[] } {
   const a = new Map((before.findings ?? []).map((f) => [f.id, f])), b = new Map((after.findings ?? []).map((f) => [f.id, f]));
   const line = (f: Finding, extra = "") => `  ${f.key}${extra}${f.n > 1 ? ` ×${f.n}` : ""}${f.unsure ? " (unsure)" : ""}${f.at[0] ? `: ${f.at[0]}` : ""}`;
   const capped = (l: string[]) => (l.length > max ? [...l.slice(0, max), `  ... ${l.length - max} more`] : l);
@@ -206,7 +207,8 @@ export function diffFindings(before: Census, after: Census, max = 40): { lines: 
       continue;
     }
     // the same finding covering elements it didn't (a second small button next to the first) is new too
-    const more = was ? (f.values ?? []).filter((v) => !(was.values ?? []).includes(v)) : [];
+    const had = new Set(was?.values ?? []);
+    const more = was ? (f.values ?? []).filter((v) => !had.has(v) && !had.has(renamed.get(v) ?? "")) : [];
     if (was && !more.length) continue;
     (f.level === "rule" ? newRules : newAccessibility).push(f);
     if (f.level === "accessibility") nw.push(line(f, more.length ? ` (now also ${more.slice(0, 6).join(", ")})` : ""));

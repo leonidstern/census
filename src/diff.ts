@@ -42,10 +42,15 @@ function pairUp(a: CensusItem[], b: CensusItem[]) {
     const byKey = new Map<string, CensusItem[]>();
     for (const x of right) byKey.set(x[key], [...(byKey.get(x[key]) ?? []), x]);
     const rest: CensusItem[] = [];
+    const many = new Map<string, number>();
+    for (const x of left) many.set(x[key], (many.get(x[key]) ?? 0) + 1);
+    // as many on both sides: paired in page order (badges in rows that moved up under a compact table stay with their
+    // rows); else, of the candidates, the nearest one
+    const inOrder = new Set([...many].filter(([k, n]) => n > 1 && byKey.get(k)?.length === n).map(([k]) => k));
     for (const x of left) {
       const list = byKey.get(x[key]);
       if (!list?.length) { rest.push(x); continue; }
-      // of the candidates, the nearest one
+      if (inOrder.has(x[key])) { pairs.push([x, list.shift()!]); continue; }
       let best = 0, d = Infinity;
       list.forEach((y, i) => { const e = Math.abs(y.box[0] - x.box[0]) + Math.abs(y.box[1] - x.box[1]); if (e < d) { d = e; best = i; } });
       pairs.push([x, list.splice(best, 1)[0]]);
@@ -56,7 +61,23 @@ function pairUp(a: CensusItem[], b: CensusItem[]) {
   return { pairs, gone: left, added: right };
 }
 
-const differs = ([x, y]: [CensusItem, CensusItem], skip?: string) => words(x) !== words(y) || LOOK_ORDER.some((k) => k !== skip && x.look[k] !== y.look[k]) || Math.abs(x.box[2] - y.box[2]) > 2 || Math.abs(x.box[3] - y.box[3]) > 2;
+/** An item's name as a finding lists it (nameOf: #id, or role and words), without its part and where. */
+const nameOfId = (id: string) => id.match(/^(#\S+|\S+(?: "(?:[^"\\]|\\.)*")?)/)?.[1] ?? id;
+
+/**
+ * Elements that were renamed between two captures, the same control with new words ("Export" → "Export CSV"), as the
+ * after name → the before name: a finding that covered it before covers it still, and isn't new for the new name.
+ */
+export function renames(before: Census, after: Census): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const [x, y] of pairUp(before.items ?? [], after.items ?? []).pairs) {
+    const was = nameOfId(x.id), now = nameOfId(y.id);
+    if (was !== now) m.set(now, was);
+  }
+  return m;
+}
+
+const differs =([x, y]: [CensusItem, CensusItem], skip?: string) => words(x) !== words(y) || LOOK_ORDER.some((k) => k !== skip && x.look[k] !== y.look[k]) || Math.abs(x.box[2] - y.box[2]) > 2 || Math.abs(x.box[3] - y.box[3]) > 2;
 
 /**
  * Of two reads of one page with no change between them, the elements that differ: they change on their own (a price,
@@ -72,6 +93,8 @@ const regionOf = (x: CensusItem) => x.at.match(/\] in ([a-z][\w -]*?) -?\d+,-?\d
 const nameAt = (x: CensusItem) => x.at.replace(/ \[[^\]]*\]/g, "").replace(/ in [a-z][\w -]*? (?=-?\d+,)/, " ").replace(/ -?\d+,-?\d+ \d+x\d+$/, "");
 const way = (dx: number, dy: number) => [dx ? `${Math.abs(dx)}px ${dx < 0 ? "left" : "right"}` : "", dy ? `${Math.abs(dy)}px ${dy < 0 ? "up" : "down"}` : ""].filter(Boolean).join(" and ");
 
+/** A size change as how much: "8px shorter", "4px wider and 8px shorter" (2px or less is no change). */
+const resized = (dw: number, dh: number) => [Math.abs(dw) > 2 ? `${Math.abs(dw)}px ${dw < 0 ? "narrower" : "wider"}` : "", Math.abs(dh) > 2 ? `${Math.abs(dh)}px ${dh < 0 ? "shorter" : "taller"}` : ""].filter(Boolean).join(" and ");
 const lookText = (x: CensusItem) => LOOK_ORDER.filter((k) => x.look[k]).map((k) => `${k} ${x.look[k]}`).join("; ");
 const cap = (lines: string[], n: number) => (lines.length > n ? [...lines.slice(0, n), `  ... ${lines.length - n} more`] : lines);
 
@@ -98,7 +121,7 @@ export function diffCensus(before: Census, after: Census, max = 40, live?: Censu
   const keep = (x: CensusItem) => (hot.length && isHot(x) ? (skipped++, false) : true);
   const pairs = all.pairs.filter((p) => !differs(p) || keep(p[1]));
   const gone = all.gone.filter(keep), added = all.added.filter(keep);
-  const changed: string[] = [];
+  const changed: { y: CensusItem; say: string; key: string; size: boolean }[] = [];
   const moves = new Map<string, { region: string; dx: number; dy: number; els: CensusItem[] }>();
   let moved = 0;
   for (const [x, y] of pairs) {
@@ -106,7 +129,11 @@ export function diffCensus(before: Census, after: Census, max = 40, live?: Censu
     // a size change only for a control or words of their own (a box grows with what's in it), and not again after a height
     const sized = x.id === y.id && !!(y.look.height || y.look.text) && !keys.includes("height") && (Math.abs(x.box[2] - y.box[2]) > 2 || Math.abs(x.box[3] - y.box[3]) > 2);
     const said = words(x) !== words(y) ? [`words "${words(x) ?? ""}"→"${words(y) ?? ""}"`] : [];
-    if (said.length || keys.length || sized) changed.push(`  ${y.at}: ${[...said, ...keys.map((k) => `${k} ${change(x.look[k], y.look[k])}`), ...(sized ? [`size ${x.box[2]}x${x.box[3]}→${y.box[2]}x${y.box[3]}`] : [])].join("; ")}`);
+    if (said.length || keys.length || sized) {
+      const say = [...said, ...keys.map((k) => `${k} ${change(x.look[k], y.look[k])}`), ...(sized ? [`size ${x.box[2]}x${x.box[3]}→${y.box[2]}x${y.box[3]}`] : [])].join("; ");
+      const size = !said.length && !keys.length;
+      changed.push({ y, say, size, key: size ? `size ${resized(y.box[2] - x.box[2], y.box[3] - x.box[3])}` : say });
+    }
     else if (Math.abs(x.box[0] - y.box[0]) > 2 || Math.abs(x.box[1] - y.box[1]) > 2) {
       if (!keep(y)) continue;
       moved++;
@@ -124,7 +151,12 @@ export function diffCensus(before: Census, after: Census, max = 40, live?: Censu
   if (!before.items || !after.items) out.push("(a census without items: take both with the capture, or rules.items, to compare elements)");
   const lost = gone.filter((x) => CONTROL_AT.test(x.at)).length;
   out.push(`census diff: ${changed.length} changed, ${added.length} new, ${gone.length} gone${lost ? ` (${lost} of them controls, marked !)` : ""}, ${moved} only moved${watched ? `; ${skipped} live (they change on their own, not listed)` : ""}`);
-  if (changed.length) out.push(`changed (${changed.length})`, ...cap(changed, max));
+  // the same change on many elements (a compact table resizes every cell, a theme sets every button's weight) is one
+  // line naming a few of them, so one change on its own (a badge's color) isn't pushed past the cap; looks before sizes
+  const same = new Map<string, typeof changed>();
+  for (const c of changed) same.set(c.key, [...(same.get(c.key) ?? []), c]);
+  const changeLines = [...same.values()].sort((p, q) => Number(p[0].size) - Number(q[0].size)).map((g) => g.length === 1 ? `  ${g[0].y.at}: ${g[0].say}` : `  ${g[0].key} ×${g.length}: ${g.slice(0, 3).map((c) => c.y.at).join("; ")}${g.length > 3 ? "; …" : ""}`);
+  if (changed.length) out.push(`changed (${changed.length}${changeLines.length < changed.length ? `, in ${changeLines.length} lines` : ""})`, ...cap(changeLines, max));
   if (added.length) out.push(`new (${added.length})`, ...cap(added.map((y) => `  ${y.at}: ${lookText(y)}`), max));
   // a control that went is something a person could press before and can't now
   if (gone.length) out.push(`gone (${gone.length})`, ...cap(gone.map((x) => `  ${CONTROL_AT.test(x.at) ? "! " : ""}${x.at}: ${lookText(x)}`).sort((p, q) => Number(q.startsWith("  !")) - Number(p.startsWith("  !"))), max));
@@ -157,13 +189,15 @@ export function diffCensus(before: Census, after: Census, max = 40, live?: Censu
   for (const [k, s] of la) { const now = lb.get(k); for (const l of s) if (now && !now.has(l)) pl.push(`  ${k}: lost look ${l}`); }
   if (pl.length) out.push(`parts (${pl.length})`, ...cap(pl, max));
 
-  // layout problems, compared without their boxes
-  const probs = (c: Census) => new Map((c.groups.find((g) => g.name === "layout problems")?.rows ?? []).map((r) => [r.key.replace(BOX, "#"), r.key]));
+  // layout problems, matched by kind and element: the box and the numbers after it (what the text needs, a contrast,
+  // what covers it) can change while the problem stays, as a cut label does when its button grows taller
+  const probKey = (k: string) => { const s = k.replace(BOX, "#"); return s.slice(0, s.lastIndexOf("#") + 1) || s; };
+  const probs = (c: Census) => new Map((c.groups.find((g) => g.name === "layout problems")?.rows ?? []).map((r) => [probKey(r.key), r.key]));
   const pa = probs(before), pb = probs(after);
   const np = [...pb].filter(([k]) => !pa.has(k)).map(([, v]) => `  ${v}`), fp = [...pa].filter(([k]) => !pb.has(k)).map(([, v]) => `  ${v}`);
   if (np.length) out.push(`layout problems new (${np.length})`, ...cap(np, max));
   if (fp.length) out.push(`layout problems gone (${fp.length})`, ...cap(fp, max));
   // findings by id: rule breaks and accessibility, new and fixed
-  if (before.report || after.report) out.push(...diffFindings(before, after, max).lines);
+  if (before.report || after.report) out.push(...diffFindings(before, after, max, renames(before, after)).lines);
   return out;
 }

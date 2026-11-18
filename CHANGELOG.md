@@ -6,6 +6,11 @@ Covered by that promise: the census and diff text, rules.json, the CLI's flags a
 
 ## Unreleased
 
+- **Breaking: a diff says the same change on many elements once.** `changed` lists each change with up to 3 of the elements it hit (`size 8px shorter ×15: th …; th …; th …; …`), changes of look before changes of size only, and the heading says how many lines that took (`changed (58, in 13 lines)`). Before, every element had its own line, and a compact table's 59 resized cells pushed a badge's red → yellow past the 40-line cap. Found in a PR-review benchmark on a Bootstrap page.
+- **Elements with no words of their own pair in page order in a diff**, when a capture has as many of them as the other one. Before, each paired with the nearest one, so when the rows above moved up, the badges paired with the wrong rows' badges and read as two changes.
+- **A renamed control no longer makes its findings read as new.** After "Export" → "Export CSV", a contrast finding that covered the button said `(now also button "Export CSV")` and counted for `--fail-on new-accessibility`. The diff now follows the rename. The new export `renames(before, after)` gives the map, and `diffFindings` takes it as a fourth argument.
+- **The last control forced no longer reads at rest with its focus ring on.** Transitions came back before Chrome had applied the last un-forcing, so that control faded out of its focus state while it was read: a ring it doesn't wear, and a "mid-animation" count. Seen on a disabled Bootstrap button.
+- **A layout problem that stays is no longer "new" and "gone" in a diff.** Problems were matched with their measurements, so a label already cut off showed up as both when its button only grew taller (`needs 190x32` → `needs 190x36`). They now match on kind and element; a box or number that changes alongside doesn't make it a new problem. Found in a PR-review benchmark.
 - **Breaking: `roles` is gone from rules.json.** It set the fill, shadow and corner a box of each ARIA role or part had to have. A rules.json that still sets it is read as before, minus that field: nothing is checked against it and nothing says so.
 
 ## 0.4.0 — 2026-11-14

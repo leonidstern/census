@@ -120,6 +120,34 @@ check(Math.round(C.contrast(white, black)) === 21 && JSON.stringify(C.parseColor
   check(d.includes("  text #555555 OFF (nearest muted, 59 away) ×1: p 16,30 100x20"), "a diff's value line drops where it comes from, even a var() in it") || console.log(d);
 }
 
+{
+  // a layout problem that stays is not new and gone: its box and its numbers can change with it
+  const lp = (...keys) => ({ head, groups: [{ name: "layout problems", rows: keys.map((key) => ({ key, n: 0, at: [] })) }] });
+  const same = C.diffCensus(lp('cut-text button "Advanced order settings" in aside 1080,278 110x32 needs 190x32'), lp('cut-text button "Advanced order settings" in aside 1080,282 110x36 needs 190x36')).join("\n");
+  const real = C.diffCensus(lp('cut-text button "Advanced order settings" in aside 1080,278 110x32 needs 190x32'), lp('cut-text button "Advanced order settings" in aside 1080,282 110x36 needs 190x36', 'cut-text button "Export CSV" 162,114 96x30 needs 103x30')).join("\n");
+  check(!/layout problems/.test(same) && /layout problems new \(1\)\n {2}cut-text button "Export CSV"/.test(real) && !/layout problems gone/.test(real),
+    "diff: a cut label whose button grew is the same problem, a newly cut one is new") || console.log(same, "\n---\n", real);
+}
+
+{
+  // the same change on many elements is one line, so a change on its own isn't pushed past the cap; elements with no
+  // words of their own, as many before as after, pair in page order (badges in rows that moved up keep their rows)
+  const it = (id, x, y, w, h, look) => ({ id, loose: id.replace(/ ".*"/, ""), at: `${id} ${x},${y} ${w}x${h}`, box: [x, y, w, h], look });
+  const cells = (h) => Array.from({ length: 50 }, (_, i) => it("td", 0, 100 + i * h, 120, h, { text: "body" }));
+  const badges = (dy, mid) => ["danger", mid, "danger"].map((fill, i) => it("span", 800, 100 + i * (48 - dy) - dy * 4, 60, 20, { fill, height: "span 20px" }));
+  const page = (items) => ({ head, groups: [], items });
+  const d = C.diffCensus(page([...cells(48), ...badges(0, "success")]), page([...cells(40), ...badges(8, "warning")]), 40).join("\n");
+  check(/changed \(51, in 2 lines\)\n {2}span 800,\d+ 60x20: fill success→warning\n {2}size 8px shorter ×50: td 0,100 120x40; td 0,140 120x40; td 0,180 120x40; …/.test(d),
+    "diff: 50 cells resized alike are one line, after the one badge whose color changed; badges pair in page order") || console.log(d);
+  // a renamed control keeps its findings: "Export" → "Export CSV" is not newly covered, a new "Pin" is
+  const f = (values) => [{ id: "contrast|#6c757d on #f8f9fa|", check: "contrast", level: "accessibility", key: "contrast 4.45:1", n: values.length, at: [], values }];
+  const cen = (names, values) => ({ head, groups: [], report: true, items: names.map((n, i) => it(`button "${n}"`, 100 * i, 10, 80, 36, { height: "button 36px" })), findings: f(values) });
+  const renamed = C.diffCensus(cen(["Filter", "Export"], ['button "Filter"', 'button "Export"']), cen(["Filter", "Export CSV"], ['button "Filter"', 'button "Export CSV"'])).join("\n");
+  const added = C.diffCensus(cen(["Filter", "Export"], ['button "Filter"', 'button "Export"']), cen(["Filter", "Export CSV", "Pin"], ['button "Filter"', 'button "Export CSV"', 'button "Pin"'])).join("\n");
+  check(!/accessibility new/.test(renamed) && /words "Export"→"Export CSV"/.test(renamed) && /accessibility new \(1\)\n {2}contrast 4\.45:1 \(now also button "Pin"\)/.test(added),
+    "diff: a renamed control's finding is not new; a control it newly covers is") || console.log(renamed, "\n---\n", added);
+}
+
 // ---------- Source maps ----------
 {
   const { transform } = await import("esbuild"), { sourceMapper, mapSources } = await import("../cli/sourcemap.mjs");
@@ -363,7 +391,7 @@ if (chromium) {
   else {
     // style-src 'self' refuses any <style> a script adds, and report-uri has the browser report each one
     let reports = 0;
-    const css = ".btn{background:#111111;color:#ffffff;height:32px;border:0;transition:background-color 4s linear}.btn:hover{background:#ff0000}.banner{background:#00ff00;height:40px}";
+    const css = ".btn{background:#111111;color:#ffffff;height:32px;border:0;transition:background-color 4s linear,box-shadow 4s linear}.btn:hover{background:#ff0000}.btn:focus-visible{box-shadow:0 0 0 4px #0000ff}.banner{background:#00ff00;height:40px}";
     const html = '<!doctype html><html><head><link rel="stylesheet" href="/app.css"></head><body><div class="banner"><button class="btn">Accept</button></div><button class="btn">Save</button></body></html>';
     const server = createServer((req, res) => {
       if (req.url === "/csp") { reports++; req.resume(); res.writeHead(204).end(); return; }
@@ -380,6 +408,8 @@ if (chromium) {
     check(reports === 0, `CSP: a capture sends the site no violation reports (${reports} sent)`);
     check(/hover fill #ff0000/.test(states), `CSP: transitions are off while states are read, so hover reads its own color, not one partway there${/hover fill #ff0000/.test(states) ? "" : `\n${states || out}`}`);
     check(!/#00ff00|"Accept"/.test(out), "CSP: --hide hides");
+    // the last control forced focused doesn't fade out of its ring while the page is read at rest
+    check(!/\(ring\)|mid-animation/.test(out), `capture: no focus ring left on the last control forced, nothing mid-animation${/\(ring\)|mid-animation/.test(out) ? `\n${out}` : ""}`);
   }
 }
 
