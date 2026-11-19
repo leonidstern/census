@@ -6,6 +6,8 @@ Covered by that promise: the census and diff text, rules.json, the CLI's flags a
 
 ## Unreleased
 
+- **Breaking: a pill reads as `full` whatever number drew it.** A corner was `full` only at 999px or 50%, so `border-radius: 100px` on a 32px button read as `100px`: said OFF against `radii`, and counted as a radius of its own beside the `full` of a 9999px pill, which could put `radius` over its max. A corner of half the box's shorter side or more is now `full`, as it looks on screen. A small circle (an 8px dot with 4px corners) reads `full` too.
+
 - **Breaking: `roles` is gone from rules.json.** It set the fill, shadow and corner a box of each ARIA role or part had to have. A rules.json that still sets it is read as before, minus that field: nothing is checked against it and nothing says so.
 
 ## 0.4.0 — 2026-11-14

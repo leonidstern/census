@@ -186,6 +186,9 @@ if (chromium) {
       `target size: two small buttons side by side fail, a small one alone passes by spacing, an inline link and a turned-off control are exempt${show}`);
     check(f(/^focus not visible/).length === 1 && /"No ring"/.test(f(/^focus not visible/)[0].at[0]), `focus visible: forced focused, a control that changes nothing (outline: none) is a finding; a default ring is not${show}`);
     check(!fs.some((x) => x.level !== "rule" && x.level !== "accessibility"), "no observations: only the team's rules and accessibility");
+    const corners = pwLines(await pwCensus(p4, { rules: { radii: [8] } }));
+    check(/^ {2}full ×2: button "Pill"/m.test(corners) && !/100px|9999px/.test(corners),
+      `a pill is a full corner whatever number drew it (100px on a 32px button, 9999px): one value, never OFF${/full ×2/.test(corners) ? "" : `\n${corners}`}`);
     const plainData = await pwCensus(p4, { rules: { colors: sys.colors } });
     check(!plainData.findings.some((x) => x.level !== "rule") && plainData.findings.some((x) => x.check === "off") && !/^(rules broken|accessibility|observations) \(/m.test(pwLines(plainData)) && !plainData.report,
       "without extends or checks: the findings are data only (for diff and --fail-on); the text is as it always was");
