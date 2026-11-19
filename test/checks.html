@@ -14,6 +14,7 @@
   .alone { position: absolute; left: 600px; top: 300px; width: 16px; height: 16px; padding: 0; border: 0; background: #e0e0e0; }
   .nofocus { background: none; border: 1px solid var(--ink); height: 32px; }
   .nofocus:focus, .nofocus:focus-visible { outline: none; }
+  .pill { height: 32px; padding: 0 12px; border: 0; background: #eeeeee; color: var(--ink); }
   .pop { box-shadow: var(--shadow-pop); border-radius: var(--radius-md); }
 </style></head>
 <body>
@@ -27,4 +28,5 @@
   <p>Read the <a href="#terms">terms</a> before you start.</p>
   <button class="nofocus">No ring</button>
   <div class="pop">A raised box</div>
+  <button class="pill" style="border-radius: 100px">Pill</button> <button class="pill" style="border-radius: 9999px">Pill too</button>
 </body></html>

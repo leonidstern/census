@@ -1030,8 +1030,10 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
     return "";
   };
   // "full" only when the rule says so (999 px or more, or half the box), else what is declared; four numbers when the corners differ
-  const cornerOf = (cs: CSSStyleDeclaration) => {
-    const one = (v: string) => { const n = parseFloat(v) || 0; return (v.includes("%") ? n >= 50 : n >= 999) ? "full" : num(n); };
+  // a corner of half the box's shorter side or more draws a pill or a circle, whatever number was written (100px, 9999px)
+  const cornerOf = (cs: CSSStyleDeclaration, r?: DOMRect) => {
+    const half = r && r.width > 0 && r.height > 0 ? Math.min(r.width, r.height) / 2 - 0.5 : Infinity;
+    const one = (v: string) => { const n = parseFloat(v) || 0; return n > 0 && (v.includes("%") ? n >= 50 : n >= 999 || n >= half) ? "full" : num(n); };
     const c = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius].map(one);
     return c.every((x) => x === c[0]) ? c[0] : c.join(" ");
   };
@@ -1239,7 +1241,7 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
     }
     const big = r.width >= 4 && r.height >= 4;
     // a color on its way somewhere (a flash, a fade) is not a value of the page
-    let bg = colorOf(cs.backgroundColor), line = lineOf(cs), corner = cornerOf(cs);
+    let bg = colorOf(cs.backgroundColor), line = lineOf(cs), corner = cornerOf(cs, r);
     const ctl = big && el.matches(CONTROL);
     const still = !(bg || ctl) || !el.getAnimations?.().some((a) => a.playState === "running");
     if (!still) { moving++; bg = null; }
@@ -1269,7 +1271,7 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
       const inner = !lb && !ls?.rest.length && !!el.parentElement?.closest("[role=dialog],[role=alertdialog],[role=menu],[role=listbox],[role=tooltip]");
       for (let p = el.parentElement, i = 0; !inner && !lb && !ls?.rest.length && p && i < 4; p = p.parentElement, i++) {
         const pcs = getComputedStyle(p), pb = colorOf(pcs.backgroundColor), ps = shadowLayers(pcs.boxShadow);
-        if (pb || ps.rest.length) { lb = pb; ll = lineOf(pcs); lc = cornerOf(pcs); ls = ps; }
+        if (pb || ps.rest.length) { lb = pb; ll = lineOf(pcs); lc = cornerOf(pcs, p.getBoundingClientRect()); ls = ps; }
       }
       if (!inner) {
         add(groups.layer, `${role ?? "layer"} corner ${sayCorner(lc)} fill ${lb ?? "none"}${ll ? ` line ${ll}` : ""} shadow ${ls?.rest.length ? ls.rest.join(", ") : "none"}`, el, r);
@@ -1288,7 +1290,7 @@ function census(rules: StyleRules, root: Element, cap: number, host: HTMLElement
           const wr = w.getBoundingClientRect();
           if (wr.height > r.height * 3 + 8) break;
           const wcs = getComputedStyle(w), wb = colorOf(wcs.backgroundColor), wl = lineOf(wcs);
-          if (wb || wl) { bg = wb; line = wl; corner = cornerOf(wcs); boxR = wr; }
+          if (wb || wl) { bg = wb; line = wl; corner = cornerOf(wcs, wr); boxR = wr; }
         }
         add(groups.field, `${Math.round(boxR.height)}px corner ${sayCorner(corner)} fill ${bg ?? "none"}${line ? ` line ${line}` : ""}`, el, boxR);
       }
